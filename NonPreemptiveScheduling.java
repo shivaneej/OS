@@ -4,7 +4,7 @@ import java.lang.*;
 class Process{
   String Pname;
   int arrTime,sTime,wTime,tTime,prio,cTime,start;
-  Boolean status;
+  Boolean status; //status = true means placed in queue
   Process(String Pname, int arrTime, int sTime, int prio)
   {
     this.Pname=Pname;
