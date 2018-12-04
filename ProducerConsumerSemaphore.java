@@ -1,147 +1,144 @@
 import java.util.*;
-import java.lang.*;
-//flag==true : can execute
-//flag==false: cannot execute
-class Semaphore extends Thread
+
+class Semaphore
 {
-  static boolean flag = true;
-  static Semaphore s=new Semaphore();
-  public static void Pwait()
+  private int flag;
+  Semaphore(int x)
   {
-    String now="x";
-    while(!flag)
-    {
-      now = Main.queue.get(0);
-    }    
-    Main.queue.remove(0);
-    if(now.equals("c"))
-      {
-        new Consumer().run();
-      }
-      else if(now.equals("p"))
-      {
-        new Producer().run();
-      }
+    flag = x;
+  }
+  public void semWait()
+  {
+    while(flag==0)
+     Thread.yield();
+    flag--;
+  }
+  public void semSignal()
+  {
+    flag++;
   }
 }
-class Producer extends Thread
+
+class Container
 {
-  static int i=0;
-  public void run()
+  int capacity,qty;
+  Container(int c)
   {
-    while(i<5)
+    capacity = c;
+    qty = 0;
+  }
+
+  public void add()
+  {
+    if(capacity > qty)
     {
-      if(Semaphore.flag==true)
-      {
-        if(Main.m<Main.N)
-        {
-          Semaphore.flag = false;
-          System.out.println("Producing");
-          try
-          {
-            Thread.sleep(400);
-          }
-          catch(InterruptedException e)
-          {
-            System.out.println(e);
-          }
-          Main.m++;
-          System.out.println("Produced! Quantity: "+Main.m+"\n");
-          i++;
-          Semaphore.flag = true;
-        }
-        else
-        {
-          System.out.println("Cannot produce, container full");
-          Main.queue.add("p");
-          Semaphore.Pwait();
-        }
-        //Semaphore.flag = true;
-      }
-      else
-      {
-        System.out.println("Producer Waiting");
-        Main.queue.add("p");
-        Semaphore.Pwait();
-      }
-      try
-      {
-          Thread.sleep(100);
-      }
-      catch(InterruptedException e)
-      {
-        System.out.println(e);
-      }
-      //i++;
+      qty++;
+      System.out.println("Produced. Qty = "+qty);
+    }
+    else
+    {
+      System.out.println("Buffer full, cannot produce");
+    }
+  }
+  public void remove()
+  {
+    if(qty>0)
+    {
+      qty--;
+      System.out.println("Consumed. Qty = "+qty);
+    }
+    else
+    {
+      System.out.println("Buffer empty, cannot consume");
     }
   }
 }
-class Consumer extends Thread
+
+class Producer extends Thread
 {
-  static int j=0;
+  Container c;
+  Semaphore e,s,n;
+  Producer(Container c,Semaphore s, Semaphore e, Semaphore n)
+  {
+    this.s = s;
+    this.e = e;
+    this.n = n;
+    this.c=c;
+  }
   public void run()
   {
-    while(j<5 || Main.m>0)
+    int i=0;
+    Random r = new Random();
+    for(i=0;i<10;i++)
     {
-      if(Semaphore.flag==true)
-      {
-        if(Main.m>0)
-        {
-          Semaphore.flag = false;
-          System.out.println("Consuming");
-          try
-          {
-            Thread.sleep(400);
-          }
-          catch(InterruptedException e)
-          {
-            System.out.println(e);
-          }
-          Main.m--;
-          System.out.println("Consumed! Quantity: "+Main.m+"\n");
-          j++;
-          Semaphore.flag = true;
-        }
-        else
-        {
-          System.out.println("Cannot consume, container empty");
-          Main.queue.add("c");
-          Semaphore.Pwait();
-        }
-        //Semaphore.flag = true;
-      }
-      else
-      {
-        System.out.println("Consumer Waiting");
-        Main.queue.add("c");
-        Semaphore.Pwait();
-      }
       try
       {
-          Thread.sleep(600);
+        Thread.sleep(r.nextInt(200));
       }
-      catch(InterruptedException e)
+      catch (InterruptedException e)
       {
-        System.out.println(e);
+
       }
-      //j++;
-    } 
+      e.semWait();
+      s.semWait();
+      c.add();
+      s.semSignal();
+      n.semSignal();
+    }
   }
 }
-public class Main
+
+class Consumer extends Thread
 {
-  static int m=0,N;
-  static Vector <String> queue = new Vector<String>();
-  public static void main(String arg[])
+  Container c;
+  Semaphore e,s,n;
+  Consumer(Container c,Semaphore s, Semaphore e, Semaphore n)
   {
-    Scanner sc = new Scanner(System.in);
+    this.s = s;
+    this.e = e;
+    this.n = n;
+    this.c = c;
+  }
+  public void run()
+  {
+    int i=0;
+    Random r = new Random();
+    for(i=0;i<10;i++)
+    {
+      try
+      {
+        Thread.sleep(r.nextInt(200));
+      }
+      catch (InterruptedException e)
+      {
+
+      }
+      n.semWait();
+      s.semWait();
+      c.remove();
+      s.semSignal();
+      e.semSignal();
+    }
+  }
+}
+
+class Main
+{
+  public static void main(String args[])
+  {
+    int size;
+    Scanner sc = new Scanner (System.in);
     System.out.println("Enter capacity");
-    N=sc.nextInt();
-    System.out.println("Inital quantity: "+m);
-    Producer p = new Producer();
-    Consumer c = new Consumer();
+    size = sc.nextInt();
+    Container ct = new Container(size);
+    Semaphore s = new Semaphore (1);
+    Semaphore e = new Semaphore (size);
+    Semaphore n = new Semaphore (0);
+
+    Producer p = new Producer (ct,s,e,n);
+    Consumer c = new Consumer (ct,s,e,n);
+
     p.start();
     c.start();
   }
 }
-
