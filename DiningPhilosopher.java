@@ -1,115 +1,90 @@
 import java.util.*;
 import java.lang.*;
 
-class Philosopher extends Thread
+class Sem
 {
-  int id,status;
-  //status=0 idle
-  //status=1 hungry
-  //status=2 eating
-  Philosopher(int id)
-  {
-    this.id=id;
-    this.status=0;
-  }
-
-  public void run()
-  {
-    int x =this.id;
-    int left, right;
-    left = (Main.N+x)%Main.N;
-    right = (Main.N+x+1)%Main.N;
-    if(Main.fork.get(left) && Main.fork.get(right))
+    int flag;
+    static int num = Main.num;
+    static Sem forks[]=new Sem[num];
+    public Sem ()
     {
-      Main.fork.set(left,false);
-      Main.fork.set(right,false);
-      Main.v.get(x).status=2;
-      System.out.println("Philosopher "+x+" started eating");
-      try
-      {
-        Thread.sleep(500);
-      }
-      catch(InterruptedException e)
-      {
-        System.out.println(e);
-      }
-      System.out.println("Philosopher "+x+" finished eating");
-      Main.fork.set(left,true);
-      Main.fork.set(right,true);
-       try
-      {
-        Thread.sleep(1500);
-      }
-      catch(InterruptedException e)
-      {
-        System.out.println(e);
-      }
-      Main.v.get(x).status=0;
+      this.flag = 1;
     }
-    else
+    public void semWait()
     {
-      System.out.println("Philosopher "+x+" is WAITING");
-       try
-      {
-        Thread.sleep(200);
-      }
-      catch(InterruptedException e)
-      {
-        System.out.println(e);
-      }
-      run();
+        while(flag!=1) {Thread.yield();}
+        flag=0;
     }
-  }
+    public void semSignal()
+    {
+        flag=1;
+    }
 }
 
-class Main 
-{
-  static int N;
-  static Vector <Boolean> fork  = new Vector <>();
-  static Vector <Philosopher> v = new Vector <>(); //list of philosophers
-  static ArrayList <Integer> random = new ArrayList<Integer>();
-  public static void main(String[] args) 
-  {
-    int i,num,x;
-    Scanner sc = new Scanner(System.in);
-    System.out.println("Enter number of philosophers");
-    N = sc.nextInt();
-    for(i=0;i<N;i++)
-    {
-      fork.add(true);
-      Philosopher p = new Philosopher(i);
-      v.add(p);
-      random.add(i);
-    }
-    Random r = new Random();
-    outer:
-    while(true)
-    {
-      num = r.nextInt(N) + 1;
-      Collections.shuffle(random);
-      ArrayList <Integer> current = new ArrayList <Integer> (random.subList(0,num));
-      for(i=0;i<current.size();i++)
-      {
-        x = random.get(i);
-        if(v.get(x).status==0 && v.get(x).isAlive()==false)
-        {
-          v.get(x).status=1;
-          System.out.println("Philosopher "+x+" is hungry");
-          try
-          {
-            Thread t = new Thread(v.get(x));
-             t.start();
-          }
-          catch (IllegalThreadStateException e)
-          {
-            continue outer;
-          }
-         
-        }
-        else
-        continue outer;
-      }
-    }
 
+class Phil extends Thread
+{
+  int n = Main.num;
+  Phil(String name)
+  {
+      super(name);
   }
+  public void run()
+  {
+      while(true)
+      {
+        int name=Integer.parseInt(Thread.currentThread().getName());
+        if(name==n-1)
+				{
+          (Sem.forks[(name+1)%n]).semWait();
+          System.out.println("Philosopher "+name+" has got right fork");
+          (Sem.forks[name]).semWait();
+          System.out.println("Philosopher "+name+" has got left fork");
+        }
+			  else
+        {
+          (Sem.forks[name]).semWait();
+          System.out.println("Philosopher "+name+" has got left fork");
+          (Sem.forks[(name+1)%n]).semWait();
+          System.out.println("Philosopher "+name+" has got right fork");
+        }
+        System.out.println("Philosopher "+name+" is eating");
+        
+        try 
+        {
+            Random r = new Random();
+            Thread.sleep(r.nextInt(500));
+            
+        }
+        catch(Exception e) {}
+
+        System.out.println("Philosopher "+name+" has released forks");
+        (Sem.forks[name]).semSignal();
+        (Sem.forks[(name+1)%n]).semSignal();
+        try 
+        {
+          Random r = new Random();
+          Thread.sleep(r.nextInt(900));
+        }
+        catch(Exception e) {}
+      }
+  }
+}
+class Main
+{
+    static int num;
+    
+    public static void main(String args[])
+    {
+        Scanner sc =new Scanner(System.in);
+        System.out.println("Enter the number of philosophers");
+        num=sc.nextInt();
+        for(int i=0;i<num;i++)
+        Sem.forks[i] = new Sem();
+        for(int i=0;i<num;i++)
+        {
+            Phil p=new Phil(Integer.toString(i));
+            p.start();
+        }
+    }
 }
