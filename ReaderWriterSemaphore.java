@@ -2,154 +2,128 @@ import java.util.*;
 import java.lang.*;
 import java.io.*;
 
-class Semaphore extends Thread
+class Semaphore
 {
-  static boolean canWrite= true;
-  static boolean canRead = true; 
-  public static void Pwait()
-  {
-    String now=" ";
-    while(canRead == false)
+    int flag;
+    static Semaphore x=new Semaphore(1);
+    static Semaphore wsem=new Semaphore(1);
+    static Semaphore readcount=new Semaphore(0);
+    public Semaphore(int x)
     {
-     //do nothing
+      flag = x;
     }
-    if(Main.queue.isEmpty() == false)
-        now = Main.queue.get(0);
-    if(now.equals("r"))
+    
+    public void semWait()
     {
-      int occurrences = Collections.frequency(Main.queue, "r");
-        for(int k=0;k<occurrences;k++)
-        {
-            new Reader().run();
-            Main.queue.remove("r");
-        }
+      while(flag!=1){}
+      flag=0;
     }
-    else if(canWrite==true && now.equals("w"))
+    public void semSignal()
     {
-      Main.queue.remove(0);
+      flag=1;
     }
-  }
 }
 
 class Reader extends Thread
 {
-  static int i=0;
+  public Reader(String name)
+  {
+    super(name);
+  }
+
   public void run()
   {
-    while(i<5)
+    while(true)
     {
-      if(Semaphore.canRead)
+      try
       {
-        Semaphore.canRead=true;
-        Semaphore.canWrite=false;
-        System.out.println("Reading started");
-        //display text read
-        String filename="shivanee.txt";
-        String line;
-        try 
-        {
-          FileReader fileReader = new FileReader(filename);
-          BufferedReader br = new BufferedReader(fileReader);
-          line=br.readLine();
-          while(line!=null) 
-          {
-            System.out.println(line);
-            line=br.readLine();
-          }   
-          br.close();         
-        }
-        catch(FileNotFoundException e) 
-        {
-          System.out.println("Unable to open file"); 
-        }
-        catch(IOException e) 
-        {
-          System.out.println("Error reading file");  
-        }
-        i++;
-        System.out.println("Reading completed");
-        Semaphore.canRead=true;
-        Semaphore.canWrite=true;
+        Random r = new Random();
+        Thread.sleep(r.nextInt(600));
       }
-      else
+      catch(InterruptedException e){}
+
+      (Semaphore.x).semWait();
+      Semaphore.readcount.flag++;
+      if(Semaphore.readcount.flag==1)
+      (Semaphore.wsem).semWait();
+      (Semaphore.x).semSignal();
+
+      System.out.println("Reader "+Thread.currentThread().getName()+ " is reading");
+      try
       {
-        System.out.println("Waiting to read");
-        Main.queue.add("r");
-        Semaphore.Pwait();
+        File f =new File("hello.txt");
+        BufferedReader br=new BufferedReader(new FileReader(f));
+        String s;
+        while((s=br.readLine())!=null)
+            System.out.println(s);
       }
-      Semaphore.Pwait();
-       /*try
-        {
-          Thread.sleep(100);
-        }
-        catch(InterruptedException e)
-        {
-          System.out.println(e);
-        }*/
+      catch(Exception e) {}
+
+      (Semaphore.x).semWait();
+      System.out.println("Reader "+Thread.currentThread().getName()+" has stopped reading");
+      Semaphore.readcount.flag--;
+      if(Semaphore.readcount.flag==0)
+          (Semaphore.wsem).semSignal();
+      (Semaphore.x).semSignal();
     }
   }
 }
 class Writer extends Thread
 {
-  static int j=0;
+  Writer(String name)
+  {
+      super(name);
+  }
   public void run()
   {
-    while(j<5)
-    {
-      if(Semaphore.canWrite)
+      while(true)
       {
-        Semaphore.canRead=false;
-        Semaphore.canWrite=false;
-        System.out.println("Writing started\nEnter text:");
-        String filename = "shivanee.txt";
-        try 
+        (Semaphore.wsem).semWait();
+        System.out.println("Writer "+Thread.currentThread().getName()+" is writing");
+        try
         {
-          FileWriter fileWriter=new FileWriter(filename);
-          BufferedWriter bufferedWriter=new BufferedWriter(fileWriter);
-          Scanner sc=new Scanner(System.in);
-          String ip=sc.next();
-          bufferedWriter.write(ip);
-          bufferedWriter.close();
+          File f =new File("hello.txt");  
+          String str=" 1";
+          BufferedWriter bw =new BufferedWriter(new FileWriter(f,true));
+          bw.append(' ');
+          bw.append(str);
+          bw.close();
         }
-        catch(FileNotFoundException e) 
-        {
-          System.out.println("Unable to open file"); 
-        }
-        catch(IOException e) 
-        {
-          System.out.println("Error writing file");  
-        }
-        j++;
-        System.out.println("Writing completed");
-        Semaphore.canRead=true;
-        Semaphore.canWrite=true;
-      }
-      else
+        catch(Exception e){}
+        System.out.println("Writer "+Thread.currentThread().getName()+ " has finished writing");
+        (Semaphore.wsem).semSignal();
+
+        try
       {
-        System.out.println("Waiting to write");
-        Main.queue.add("r");
-        Semaphore.Pwait();
+        Random r = new Random();
+        Thread.sleep(r.nextInt(900));
       }
-      Semaphore.Pwait();
-       /*try
-        {
-          Thread.sleep(100);
-        }
-        catch(InterruptedException e)
-        {
-          System.out.println(e);
-        }*/
-    }
+      catch(InterruptedException e){}
+      
+      }
   }
-} 
+}
 class Main
 {
-  static Vector <String> queue = new Vector<String>();
-  public static void main(String args[])
-  {
-      Reader r=new Reader();
-      Writer w=new Writer();
-      r.start();
-      w.start();
-  }
+    // Semaphore x=new Semaphore(1);
+    // Semaphore wsem=new Semaphore(1);
+    // Semaphore readcount=new Semaphore(0);
+    public static void main(String args[])
+    {
+        Scanner sc =new Scanner(System.in);
+        System.out.println("Enter the number of readers");
+        int r=sc.nextInt();
+        System.out.println("Enter the number of writers");
+        int w =sc.nextInt();
+        for(int i=1;i<=r;i++)
+        {
+            Reader rw =new Reader(Integer.toString(i));
+            rw.start();
+        }
+        for(int i=1;i<=w;i++)
+        {
+            Writer wr=new Writer(Integer.toString(i));
+            wr.start();
+        }
+    }
 }
