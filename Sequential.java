@@ -108,11 +108,11 @@ class Main
     }
     double s = (double)size/blockSize;
     block = (int)(Math.ceil(s));
-    count=0;
     for(i=0;i<=(16-block);i++)
     {
       if(mem[i] == true)
       {
+        count=0;
         for(int j=i;j<i+block;j++)
         {
           if(mem[j] == true)
